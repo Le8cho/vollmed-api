@@ -1,9 +1,7 @@
-package med.voll.api.controller;
+package med.voll.api.domain.consultas;
 
 import jakarta.transaction.Transactional;
-import med.voll.api.domain.consultas.Consulta;
-import med.voll.api.domain.consultas.ConsultaRepository;
-import med.voll.api.domain.consultas.DatosCrearConsulta;
+import med.voll.api.domain.consultas.validaciones.ValidadorConsulta;
 import med.voll.api.domain.medicos.Medico;
 import med.voll.api.domain.medicos.MedicoRepository;
 import med.voll.api.domain.pacientes.PacienteRepository;
@@ -11,35 +9,53 @@ import med.voll.api.infra.errores.ValidacionDeIntegridad;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class AgendaConsultaService {
 
     @Autowired
-    ConsultaRepository consultaRepository;
+    private ConsultaRepository consultaRepository;
 
     @Autowired
-    MedicoRepository medicoRepository;
+    private MedicoRepository medicoRepository;
 
     @Autowired
-    PacienteRepository pacienteRepository;
+    private PacienteRepository pacienteRepository;
 
+    @Autowired
+    private List<ValidadorConsulta> validadorConsultaList;
 
     @Transactional
-    public void agendar(DatosCrearConsulta datos){
+    public DatosRespuestaConsulta agendar(DatosCrearConsulta datos){
 
         if(!pacienteRepository.findById(datos.idPaciente()).isPresent()){
             throw new ValidacionDeIntegridad("El Id del paciente no fue encontrado");
         }
 
-        if(datos.idMedico() != null && medicoRepository.existsById(datos.idMedico())){
+        if(datos.idMedico() != null && !medicoRepository.existsById(datos.idMedico())){
             throw new ValidacionDeIntegridad("El id del medico no fue encontrado");
         }
+
+        //Validaciones adicionales
+        validadorConsultaList.forEach(
+                v -> v.validar(datos)
+        );
 
         var paciente = pacienteRepository.findById(datos.idPaciente()).get();
 
         var medico = encontrarMedico(datos);
 
-        consultaRepository.save(new Consulta(null, medico, paciente,datos.fecha()));
+        //Puede que no se encuentre un medico disponible
+        if(medico==null){
+            throw new ValidacionDeIntegridad("No se encontraron medicos para este horario y especialidad");
+        }
+
+        var consulta = new Consulta(null, medico, paciente,datos.fecha());
+
+        consultaRepository.save(consulta);
+
+        return new DatosRespuestaConsulta(consulta);
 
     }
 
