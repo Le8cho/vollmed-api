@@ -1,6 +1,7 @@
 package med.voll.api.domain.consultas;
 
 import jakarta.transaction.Transactional;
+import med.voll.api.domain.consultas.validaciones.ValidadorCancelacion;
 import med.voll.api.domain.consultas.validaciones.ValidadorConsulta;
 import med.voll.api.domain.medicos.Medico;
 import med.voll.api.domain.medicos.MedicoRepository;
@@ -25,6 +26,7 @@ public class AgendaConsultaService {
 
     @Autowired
     private List<ValidadorConsulta> validadorConsultaList;
+
 
     @Transactional
     public DatosRespuestaConsulta agendar(DatosCrearConsulta datos){
@@ -51,7 +53,7 @@ public class AgendaConsultaService {
             throw new ValidacionDeIntegridad("No se encontraron medicos para este horario y especialidad");
         }
 
-        var consulta = new Consulta(null, medico, paciente,datos.fecha());
+        var consulta = new Consulta(medico, paciente,datos.fecha());
 
         consultaRepository.save(consulta);
 
@@ -74,4 +76,5 @@ public class AgendaConsultaService {
         return medicoRepository.seleccionarMedicoAleatorio(datos.especialidad(),datos.fecha());
 
     }
+
 }
